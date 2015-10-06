@@ -85,6 +85,7 @@ class cOpt
         //set value
         void setValue(std::string sSetIn);
         void setValue(float fSetIn);
+        void setValue(int iSetIn);
 
         //Set default class behaviour to float
         operator float() const;

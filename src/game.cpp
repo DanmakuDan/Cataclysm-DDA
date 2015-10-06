@@ -286,6 +286,7 @@ void to_map_font_dimension(int &w, int &h);
 void from_map_font_dimension(int &w, int &h);
 void to_overmap_font_dimension(int &w, int &h);
 void reinitialize_framebuffer();
+void resize_window(int w, int h, bool keep_position);
 #else
 // unchanged, nothing to be translated without tiles
 void to_map_font_dimension(int &, int &) { }
@@ -293,6 +294,7 @@ void from_map_font_dimension(int &, int &) { }
 void to_overmap_font_dimension(int &, int &) { }
 //in pure curses, the framebuffer won't need reinitializing
 void reinitialize_framebuffer() { }
+void resize_window(int , int , bool ) { }
 #endif
 
 
@@ -520,6 +522,22 @@ void game::init_ui()
 
     w_status2 = newwin(stat2H, stat2W, _y + stat2Y, _x + stat2X);
     werase(w_status2);
+}
+
+void game::reinit_ui(bool from_options)
+{
+    if(from_options) {
+        //window resize event will call this function right back
+        resize_window(OPTIONS["WINDOW_X"], OPTIONS["WINDOW_Y"], true);
+    }else {
+#ifdef TILES
+        wresize(mainwin, get_terminal_height(), get_terminal_width());
+#endif
+        init_ui();
+        if(g->game_inprogress){
+            refresh_all();
+        }
+    }
 }
 
 void game::toggle_sidebar_style(void)

@@ -195,17 +195,17 @@ bool game::opening_screen()
     int extra_h = ((TERMY - FULL_SCREEN_HEIGHT) / 2) - 1;
     extra_w = (extra_w > 0 ? extra_w : 0);
     extra_h = (extra_h > 0 ? extra_h : 0);
-    const int total_w = FULL_SCREEN_WIDTH + extra_w;
-    const int total_h = FULL_SCREEN_HEIGHT + extra_h;
+    int total_w = FULL_SCREEN_WIDTH + extra_w;
+    int total_h = FULL_SCREEN_HEIGHT + extra_h;
 
     // position of window within main display
-    const int x0 = (TERMX - total_w) / 2;
-    const int y0 = (TERMY - total_h) / 2;
+    int x0 = (TERMX - total_w) / 2;
+    int y0 = (TERMY - total_h) / 2;
 
     WINDOW *w_open = newwin(total_h, total_w, y0, x0);
     WINDOW_PTR w_openptr( w_open );
 
-    const int iMenuOffsetX = 0;
+    int iMenuOffsetX = 0;
     int iMenuOffsetY = total_h - 3;
     // note: if iMenuOffset is changed,
     // please update MOTD and credits to indicate how long they can be.
@@ -290,7 +290,33 @@ bool game::opening_screen()
 
     u = player();
 
+    //set timeout for the window redraw to have a chance to occur
+    curses_timeout(100);
+
     while(!start) {
+        if(w_background->width != TERMX || w_background->height != TERMY){
+            g->reinit_ui();
+            delwin(w_background);
+            w_background = newwin(TERMY, TERMX, 0, 0);
+            werase(w_background);
+            wrefresh(w_background);
+
+            extra_w = ((TERMX - FULL_SCREEN_WIDTH) / 2) - 1;
+            extra_h = ((TERMY - FULL_SCREEN_HEIGHT) / 2) - 1;
+            extra_w = (extra_w > 0 ? extra_w : 0);
+            extra_h = (extra_h > 0 ? extra_h : 0);
+            total_w = FULL_SCREEN_WIDTH + extra_w;
+            total_h = FULL_SCREEN_HEIGHT + extra_h;
+
+            x0 = (TERMX - total_w) / 2;
+            y0 = (TERMY - total_h) / 2;
+
+            delwin(w_open);
+            w_open = newwin(total_h, total_w, y0, x0);
+
+            iMenuOffsetY = total_h - 3;
+            print_menu(w_open, 0, iMenuOffsetX, iMenuOffsetY);
+        }
         print_menu(w_open, sel1, iMenuOffsetX, iMenuOffsetY, (sel1 == 0 || sel1 == 7) ? false : true);
 
         if (layer == 1) {
@@ -839,6 +865,7 @@ bool game::opening_screen()
             }
         }
     }
+    curses_timeout(-1);
     w_openptr.reset();
     w_backgroundptr.reset();
     if (start == false) {
