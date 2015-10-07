@@ -944,12 +944,12 @@ void init_options()
 
     OPTIONS["WINDOW_X"] = cOpt("graphics", _("Window width"),
                                  _("Set the width of the visible window."),
-                                 320, 4096, 640, COPT_POSIX_CURSES_HIDE
+                                 320, 4096, 1024, COPT_POSIX_CURSES_HIDE
                                 );
 
     OPTIONS["WINDOW_Y"] = cOpt("graphics", _("Window height"),
                                  _("Set the height of the visible window."),
-                                 200, 2160, 480, COPT_POSIX_CURSES_HIDE
+                                 200, 2160, 768, COPT_POSIX_CURSES_HIDE
                                 );
 
     OPTIONS["WINDOW_KEEP"] = cOpt("graphics", _("Remember window size"),

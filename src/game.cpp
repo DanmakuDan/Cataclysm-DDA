@@ -534,7 +534,7 @@ void game::reinit_ui(bool from_options)
         wresize(mainwin, get_terminal_height(), get_terminal_width());
 #endif
         init_ui();
-        if(g->game_inprogress){
+        if(!g->new_game){
             refresh_all();
         }
     }

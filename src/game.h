@@ -28,6 +28,10 @@ extern bool fov_3d;
 extern const int savegame_version;
 extern int savegame_loading_version;
 
+#ifdef TILES
+extern int wresize(WINDOW *win, int h, int w);
+#endif // TILES
+
 enum tut_type {
     TUT_NULL,
     TUT_BASIC, TUT_COMBAT,
@@ -138,6 +142,7 @@ class game
     public:
 
         /** Initializes the UI. */
+        void reinit_ui(bool from_options = false);
         void init_ui();
         void setup();
         /** Returns true if we actually quit the game. Used in main.cpp. */
