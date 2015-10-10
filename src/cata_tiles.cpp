@@ -229,9 +229,56 @@ int cata_tiles::load_tileset(std::string img_path, int R, int G, int B)
 
                 SDL_FreeSurface(tile_surf);
 
+                SDL_Surface *tile_surf2 = create_tile_surface(tile_width/2,tile_height/2);
+                if( tile_surf2 == nullptr ) {
+                    continue;
+                }
+                if( SDL_BlitSurface( tile_atlas, &source_rect, tile_surf2, &dest_rect ) != 0 ) {
+                    dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+                }
+                if (R >= 0 && R <= 255 && G >= 0 && G <= 255 && B >= 0 && B <= 255) {
+                    Uint32 key = SDL_MapRGB(tile_surf2->format, 0,0,0);
+                    SDL_SetColorKey(tile_surf2, SDL_TRUE, key);
+                    SDL_SetSurfaceRLE(tile_surf2, true);
+                }
+
+                SDL_Texture *tile_tex2 = SDL_CreateTextureFromSurface(renderer,tile_surf2);
+                if( tile_tex2 == nullptr ) {
+                    dbg( D_ERROR) << "failed to create texture: " << SDL_GetError();
+                }
+
+                SDL_FreeSurface(tile_surf2);
+
+                SDL_Surface *tile_surf3 = create_tile_surface(tile_width/4,tile_height/4);
+                if( tile_surf3 == nullptr ) {
+                    continue;
+                }
+                if( SDL_BlitSurface( tile_atlas, &source_rect, tile_surf3, &dest_rect ) != 0 ) {
+                    dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+                }
+                if (R >= 0 && R <= 255 && G >= 0 && G <= 255 && B >= 0 && B <= 255) {
+                    Uint32 key = SDL_MapRGB(tile_surf3->format, 0,0,0);
+                    SDL_SetColorKey(tile_surf3, SDL_TRUE, key);
+                    SDL_SetSurfaceRLE(tile_surf3, true);
+                }
+
+                SDL_Texture *tile_tex3 = SDL_CreateTextureFromSurface(renderer,tile_surf3);
+                if( tile_tex3 == nullptr ) {
+                    dbg( D_ERROR) << "failed to create texture: " << SDL_GetError();
+                }
+
+                SDL_FreeSurface(tile_surf3);
+
+
                 if( tile_tex != nullptr ) {
                 tile_values.push_back(tile_tex);
                 tilecount++;
+                }
+                if( tile_tex2 != nullptr ) {
+                zoom1.push_back(tile_tex2);
+                }
+                if( tile_tex3 != nullptr ) {
+                zoom2.push_back(tile_tex3);
                 }
             }
         }
@@ -643,7 +690,7 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
             //if the render area is outside the visibility cache, default to the darkened tile
             if(!tile_iso && ((y < min_visible_y || y > max_visible_y) || (x < min_visible_x ||
                              x > max_visible_x))) {
-                apply_vision_effects(x, y, offscreen_type);
+//                apply_vision_effects(x, y, offscreen_type);
             } else {
                 draw_single_tile( temp, ch.visibility_cache[x][y], cache );
             }
@@ -937,6 +984,14 @@ bool cata_tiles::draw_sprite_at(std::vector<int>& spritelist, int x, int y, int 
         }
 
         SDL_Texture *sprite_tex = tile_values[spritelist[sprite_num]];
+        if(default_tile_width/tile_width ==2 && spritelist[sprite_num]<zoom1.size())
+        {
+            sprite_tex = zoom1[spritelist[sprite_num]];
+        }
+        if(default_tile_width/tile_width ==4 && spritelist[sprite_num]<zoom2.size())
+        {
+            sprite_tex = zoom2[spritelist[sprite_num]];
+        }
         if ( rotate_sprite ) {
             switch ( rota ) {
                 default:
@@ -1280,18 +1335,23 @@ bool cata_tiles::draw_item_highlight(int x, int y)
     return draw_from_id_string(ITEM_HIGHLIGHT, C_NONE, empty_string, x, y, 0, 0);
 }
 
-SDL_Surface *cata_tiles::create_tile_surface()
+SDL_Surface *cata_tiles::create_tile_surface(int w, int h)
 {
     SDL_Surface *surface;
     #if SDL_BYTEORDER == SDL_BIG_ENDIAN
-        surface = SDL_CreateRGBSurface(0, tile_width, tile_height, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+        surface = SDL_CreateRGBSurface(0, w, h, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
     #else
-        surface = SDL_CreateRGBSurface(0, tile_width, tile_height, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+        surface = SDL_CreateRGBSurface(0, w, h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
     #endif
     if( surface == nullptr ) {
         dbg( D_ERROR ) << "Failed to create surface: " << SDL_GetError();
     }
     return surface;
+}
+
+SDL_Surface *cata_tiles::create_tile_surface()
+{
+    return create_tile_surface(tile_width, tile_height);
 }
 
 void cata_tiles::create_default_item_highlight()

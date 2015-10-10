@@ -217,6 +217,7 @@ class cata_tiles
 
         /** Surface/Sprite rotation specifics */
         SDL_Surface *create_tile_surface();
+        SDL_Surface *create_tile_surface(int w, int h);
 
         /* Tile Picking */
         void get_tile_values(const int t, const int *tn, int &subtile, int &rotation);
@@ -319,6 +320,8 @@ class cata_tiles
         /** Variables */
         SDL_Renderer *renderer;
         tile_map tile_values;
+        tile_map zoom1;
+        tile_map zoom2;
         tile_id_map tile_ids;
 
         int tile_height, tile_width, default_tile_width, default_tile_height;
