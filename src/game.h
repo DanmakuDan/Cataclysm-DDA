@@ -151,6 +151,8 @@ class game
         bool game_error();
         /** True if the game has just started or loaded, else false. */
         bool new_game;
+        /** Is true when game world is loaded and game is active */
+        bool game_inprogress;
         /** Used in main.cpp to determine what type of quit is being performed. */
         quit_status uquit;
         /** Saving and loading functions. */

@@ -1063,6 +1063,8 @@ void CheckMessages()
                         WindowWidth = ev.window.data1;
                         TERMINAL_HEIGHT = std::max(WindowHeight / fontheight, 24);
                         TERMINAL_WIDTH = std::max(WindowWidth / fontwidth, 80);
+                        WindowHeight = std::max(WindowHeight,24*fontheight);
+                        WindowWidth = std::max(WindowWidth,80*fontwidth);
                         SDL_Rect viewport;
                         SDL_RenderGetViewport(renderer, &viewport);
                         display_buffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, WindowWidth, WindowHeight);

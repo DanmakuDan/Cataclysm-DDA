@@ -135,6 +135,7 @@ game::game() :
     liveview_ptr( new live_view() ),
     liveview( *liveview_ptr ),
     new_game(false),
+    game_inprogress(false),
     uquit(QUIT_NO),
     m( *map_ptr ),
     u( *u_ptr ),
@@ -534,7 +535,7 @@ void game::reinit_ui(bool from_options)
         wresize(mainwin, get_terminal_height(), get_terminal_width());
 #endif
         init_ui();
-        if(!g->new_game){
+        if(!g->game_inprogress){
             refresh_all();
         }
     }
@@ -751,6 +752,8 @@ void game::start_game(std::string worldname)
     u.add_memorial_log(pgettext("memorial_male", "%s began their journey into the Cataclysm."),
                        pgettext("memorial_female", "%s began their journey into the Cataclysm."),
                        u.name.c_str());
+    //game is active, resize affects game windows
+    game_inprogress = true;
 }
 
 void game::create_factions()
@@ -1217,10 +1220,12 @@ bool game::do_turn()
 {
     if (is_game_over()) {
         return cleanup_at_end();
+        game_inprogress = false;
     }
     // Actual stuff
     if( new_game ) {
         new_game = false;
+        game_inprogress = true;
     } else {
         gamemode->per_turn();
         calendar::turn.increment();
@@ -1283,6 +1288,7 @@ bool game::do_turn()
                 }
 
                 if (is_game_over()) {
+                    game_inprogress = false;
                     return cleanup_at_end();
                 }
 
