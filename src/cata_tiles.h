@@ -148,7 +148,7 @@ class cata_tiles
          * Returns the number of tiles that have been loaded from this tileset image
          * @throw std::exception If the image can not be loaded.
          */
-        int load_tileset(std::string path, int R, int G, int B);
+        int load_tileset(std::string path, int R, int G, int B, bool isMain);
 
         /**
          * Load tileset config file (json format).
@@ -217,6 +217,7 @@ class cata_tiles
 
         /** Surface/Sprite rotation specifics */
         SDL_Surface *create_tile_surface();
+        SDL_Surface *create_tile_surface(int w, int h);
 
         /* Tile Picking */
         void get_tile_values(const int t, const int *tn, int &subtile, int &rotation);
@@ -369,6 +370,9 @@ class cata_tiles
     private:
         void create_default_item_highlight();
         int last_pos_x, last_pos_y;
+        SDL_Texture* testtex;
+        std::vector<SDL_Rect> rects;
+        int tilecount2;
 };
 
 #endif
