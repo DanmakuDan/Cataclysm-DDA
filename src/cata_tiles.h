@@ -384,6 +384,12 @@ class cata_tiles
          */
         bool nv_goggles_activated;
 
+        int zoomscale;
+        int previous_zoomscale;
+
+        SDL_Texture* backdrop_dark;
+        SDL_Texture* backdrop_boomer_dark;
+
 
 };
 

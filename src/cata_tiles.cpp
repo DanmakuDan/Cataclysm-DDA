@@ -95,6 +95,12 @@ cata_tiles::cata_tiles(SDL_Renderer *render)
 
     last_pos_x = 0;
     last_pos_y = 0;
+
+    zoomscale = 0;
+    previous_zoomscale = 0;
+
+    backdrop_dark = NULL;
+    backdrop_boomer_dark = NULL;
 }
 
 cata_tiles::~cata_tiles()
@@ -125,6 +131,15 @@ void cata_tiles::clear()
         it->second = NULL;
     }
     tile_ids.clear();
+
+    if (backdrop_dark) {
+        SDL_DestroyTexture(backdrop_dark);
+        backdrop_dark = NULL;
+    }
+    if (backdrop_boomer_dark) {
+        SDL_DestroyTexture(backdrop_boomer_dark);
+        backdrop_boomer_dark = NULL;
+    }
 }
 
 void cata_tiles::init()
@@ -424,6 +439,8 @@ void cata_tiles::set_draw_scale(int scale) {
 
     tile_ratiox = ((float)tile_width/(float)fontwidth);
     tile_ratioy = ((float)tile_height/(float)fontheight);
+
+    zoomscale = scale;
 }
 
 void cata_tiles::load_tilejson(std::string tileset_root, std::string json_conf, const std::string &image_path)
@@ -758,6 +775,12 @@ void cata_tiles::draw_single_tile( const tripoint &p, lit_level ll,
     }
 }
 
+void cata_tiles::generate_backdrops(int screentile_width, int screentile_height, int tile_width, int tile_height)
+{
+    //create a large texture to blit once, that contains the hidden lighting tile already drawn on it
+}
+
+
 void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, int height )
 {
     if (!g) {
@@ -814,6 +837,11 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
     visibility_type offscreen_type = VIS_DARK;
     if(cache.u_is_boomered) {
         offscreen_type = VIS_BOOMER_DARK;
+    }
+
+    if (zoomscale != previous_zoomscale) {
+        generate_backdrops(screentile_width, screentile_height, tile_width, tile_height);
+        previous_zoomscale = zoomscale;
     }
 
     //retrieve night vision goggle status once per draw
