@@ -466,6 +466,9 @@ int main(int argc, char *argv[])
             quit_game = true;
         }
         while (!quit_game && !g->do_turn()) ;
+
+        g->is_game_screen_refresh_valid = false;
+
         if (g->game_quit() || g->game_error()) {
             quit_game = true;
         }

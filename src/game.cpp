@@ -229,13 +229,15 @@ game::game() :
     w_blackspace(NULL),
     dangerous_proximity(5),
     pixel_minimap_option(0),
+    is_game_screen_refresh_valid(false),
     safe_mode(SAFE_MODE_ON),
     safe_mode_warning_logged(false),
     mostseen(0),
     gamemode(NULL),
     user_action_counter(0),
     lookHeight(13),
-    tileset_zoom(16)
+    tileset_zoom(16),
+    cancelled_activity_redraw(false)
 {
     world_generator = new worldfactory();
     // do nothing, everything that was in here is moved to init_data() which is called immediately after g = new game; in main.cpp
@@ -1229,6 +1231,7 @@ bool game::cleanup_at_end()
 
     MAPBUFFER.reset();
     overmap_buffer.clear();
+    is_game_screen_refresh_valid = false;
     return true;
 }
 
@@ -1358,6 +1361,7 @@ bool game::do_turn()
     if( new_game ) {
         new_game = false;
     } else {
+        is_game_screen_refresh_valid = true;
         gamemode->per_turn();
         calendar::turn.increment();
     }
@@ -1738,6 +1742,7 @@ void game::handle_key_blocking_activity()
                     hostile_critter->disp_name().c_str()) ) {
                 return;
             }
+            refresh_all();
         }
     }
 
@@ -5168,6 +5173,9 @@ void game::draw()
 {
     // Draw map
     werase(w_terrain);
+#ifdef TILES
+    invalidate_framebuffer(oversized_framebuffer);
+#endif // TILES
 
     //temporary fix for updating visibility for minimap
     ter_view_z = ( u.pos() + u.view_offset ).z;
@@ -5182,6 +5190,14 @@ void game::draw()
 #ifdef TILES
     try_sdl_update();
 #endif // TILES
+
+    // repeat a draw if the player was interrupted during a task
+    // safe mode status is stable after running through draw_sidebar(),
+    // so this shouldn't be an infinite loop
+    if( cancelled_activity_redraw ) {
+        cancelled_activity_redraw = false;
+        refresh_all();
+    }
 }
 
 void game::draw_pixel_minimap()
@@ -6054,11 +6070,14 @@ int game::mon_info(WINDOW *w)
         }
     }
 
+    cancelled_activity_redraw = false;
+
     if (newseen > mostseen) {
         if (newseen - mostseen == 1) {
             if (!new_seen_mon.empty()) {
                 monster &critter = critter_tracker->find(new_seen_mon.back());
                 cancel_activity_query(_("%s spotted!"), critter.name().c_str());
+                cancelled_activity_redraw = true;
                 if (u.has_trait("M_DEFENDER") && critter.type->in_species( PLANT )) {
                     add_msg(m_warning, _("We have detected a %s."), critter.name().c_str());
                     if (!u.has_effect( effect_adrenaline_mycus)){
@@ -6073,9 +6092,11 @@ int game::mon_info(WINDOW *w)
             } else {
                 //Hostile NPC
                 cancel_activity_query(_("Hostile survivor spotted!"));
+                cancelled_activity_redraw = true;
             }
         } else {
             cancel_activity_query(_("Monsters spotted!"));
+            cancelled_activity_redraw = true;
         }
         turnssincelastmon = 0;
         if (safe_mode == SAFE_MODE_ON) {
@@ -11092,6 +11113,7 @@ void game::butcher()
     if (hostile_critter != nullptr) {
         if (!query_yn(_("You see %s nearby! Start butchering anyway?"),
                 hostile_critter->disp_name().c_str()) ) {
+            refresh_all();
             return;
         }
     }
@@ -14525,6 +14547,7 @@ void game::autosave()
         return;
     }
     quicksave();    //Driving checks are handled by quicksave()
+    refresh_all();
 }
 
 void intro()

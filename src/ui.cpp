@@ -832,6 +832,12 @@ void uimenu::reset()
         window = NULL;
     }
 
+    #ifdef TILES
+    if(g && g->is_game_screen_refresh_valid){
+        g->refresh_all();
+    }
+    #endif // TILES
+
     init();
 }
 

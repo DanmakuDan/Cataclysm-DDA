@@ -1315,7 +1315,9 @@ bool player::can_disassemble( const item &dis_item, const recipe *cur_recipe,
 bool query_disassemble( const item &dis_item )
 {
     if( OPTIONS["QUERY_DISASSEMBLE"] ) {
-        return query_yn( _( "Really disassemble the %s?" ), dis_item.tname().c_str() );
+        bool query_result = query_yn( _( "Really disassemble the %s?" ), dis_item.tname().c_str() );
+        g->refresh_all();
+        return query_result;
     }
     return true;
 }

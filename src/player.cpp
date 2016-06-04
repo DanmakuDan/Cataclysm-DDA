@@ -4513,6 +4513,7 @@ void player::on_hurt( Creature *source, bool disturb /*= true*/ )
             } else {
                 g->cancel_activity_query(_("You were hurt!"));
             }
+            g->refresh_all();
         }
     }
 
@@ -7977,7 +7978,7 @@ void player::suffer()
                 mod_pain(1);
             }
             else focus_pool --;
-        }    
+        }
     }
 
     if (has_trait("SUNBURN") && g->is_in_sunlight(pos()) && one_in(10)) {
@@ -8011,7 +8012,7 @@ void player::suffer()
         mod_dex_bonus(-4);
         add_miss_reason(_("You can't stand the sunlight!"), 4);
         mod_int_bonus(-4);
-        mod_per_bonus(-4); 
+        mod_per_bonus(-4);
     }
 
     if (has_trait("SORES")) {

@@ -25,6 +25,8 @@ extern game *g;
 #ifdef TILES
 extern void try_sdl_update();
 extern void invalidate_all_framebuffers();
+extern void invalidate_framebuffer( std::vector<curseline> &framebuffer );
+extern std::vector<curseline> oversized_framebuffer;
 extern void clear_window_area( WINDOW* win );
 #endif // TILES
 
@@ -707,6 +709,10 @@ class game
 
         //pixel minimap management
         int pixel_minimap_option;
+
+        // track the game being loaded so the screen can be cleared without crashing
+        bool is_game_screen_refresh_valid;
+
     private:
         // Game-start procedures
         void print_menu(WINDOW *w_open, int iSel, const int iMenuOffsetX, int iMenuOffsetY,
@@ -950,6 +956,9 @@ private:
         /** Options can be specified by mods from JSON using GAME_OPTION */
         void load_game_option( JsonObject& jo );
         std::set<std::string> options;
+
+        // track the need to refresh the screen after being interrupted in an activity
+        bool cancelled_activity_redraw;
 
     public:
         bool has_option( const std::string& opt ) {
