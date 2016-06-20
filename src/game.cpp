@@ -3831,6 +3831,7 @@ void game::debug()
                        _( "Set automove route" ),     // 28
                        _( "Show mutation category levels" ), // 29
                        _( "Overmap editor" ),         // 30
+                       _( "Draw benchmark 5s" ),      // 31
                        _( "Cancel" ),
                        NULL );
     int veh_num;
@@ -4486,6 +4487,23 @@ void game::debug()
         break;
         case 30: {
             overmap::draw_editor();
+        }
+        break;
+        case 31: {
+            #ifdef TILES
+            unsigned long start_tick = SDL_GetTicks();
+            unsigned long end_tick = start_tick;
+            int draw_counter = 0;
+            while(true){
+                end_tick = SDL_GetTicks();
+                if(end_tick-start_tick>=5000){
+                    break;
+                }
+                draw();
+                draw_counter++;
+            }
+            add_msg("Drew %d times in %d ticks. (%f fps average)", draw_counter, (int)(end_tick-start_tick), 1000.0*draw_counter/(double)(end_tick-start_tick));
+            #endif // TILES
         }
         break;
     }
