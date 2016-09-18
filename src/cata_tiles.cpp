@@ -317,10 +317,6 @@ int cata_tiles::load_tileset(std::string img_path, int R, int G, int B, int spri
     SDL_Surface_Ptr nightvision_tile_atlas = create_tile_surface(tile_atlas->w, tile_atlas->h);
     SDL_Surface_Ptr overexposed_tile_atlas = create_tile_surface(tile_atlas->w, tile_atlas->h);
 
-    if(!shadow_tile_atlas || !nightvision_tile_atlas || !overexposed_tile_atlas) {
-        throw std::runtime_error( std::string("Unable to create alternate colored tilesets.") );
-    }
-
     /** copy tile atlas into alternate atlas sets */
     if( SDL_BlitSurface( tile_atlas.get(), NULL, shadow_tile_atlas.get(), NULL ) != 0 ) {
         dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
@@ -330,6 +326,10 @@ int cata_tiles::load_tileset(std::string img_path, int R, int G, int B, int spri
     }
     if( SDL_BlitSurface( tile_atlas.get(), NULL, overexposed_tile_atlas.get(), NULL ) != 0 ) {
         dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+    }
+
+    if(!shadow_tile_atlas || !nightvision_tile_atlas || !overexposed_tile_atlas) {
+        throw std::runtime_error( std::string("Unable to create alternate colored tilesets.") );
     }
 
     /** perform color filter conversion here */
@@ -350,6 +350,30 @@ int cata_tiles::load_tileset(std::string img_path, int R, int G, int B, int spri
     /** Set up initial source and destination information. Destination is going to be unchanging */
     SDL_Rect source_rect = {0, 0, sprite_width, sprite_height};
     SDL_Rect dest_rect = {0, 0, sprite_width, sprite_height};
+
+    // create a larger atlas to contain all the color variations
+    SDL_Rect large_source_rect = {0,0,tile_atlas->w,tile_atlas->h};
+    SDL_Rect large_dest_rect = {0,0,tile_atlas->w,tile_atlas->h};
+    SDL_Surface_Ptr large_tile_atlas = create_tile_surface(tile_atlas->w,tile_atlas->h * 4);
+
+    int tileset_height = tile_atlas->h;
+
+    if( SDL_BlitSurface( tile_atlas.get(), &large_source_rect, large_tile_atlas.get(), &large_dest_rect ) != 0 ) {
+        dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+    }
+    large_dest_rect.y = tileset_height;
+    if( SDL_BlitSurface( shadow_tile_atlas.get(), &large_source_rect, large_tile_atlas.get(), &large_dest_rect ) != 0 ) {
+        dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+    }
+    large_dest_rect.y = tileset_height*2;
+    if( SDL_BlitSurface( nightvision_tile_atlas.get(), &large_source_rect, large_tile_atlas.get(), &large_dest_rect ) != 0 ) {
+        dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+    }
+    large_dest_rect.y = tileset_height*3;
+    if( SDL_BlitSurface( overexposed_tile_atlas.get(), &large_source_rect, large_tile_atlas.get(), &large_dest_rect ) != 0 ) {
+        dbg( D_ERROR ) << "SDL_BlitSurface failed: " << SDL_GetError();
+    }
+
 
     /** split the atlas into tiles using SDL_Rect structs instead of slicing the atlas into individual surfaces */
     int tilecount = 0;

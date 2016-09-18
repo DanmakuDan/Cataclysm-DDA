@@ -568,6 +568,19 @@ class cata_tiles
         //place all submaps on this texture before rendering to screen
         //replaces clipping rectangle usage while SDL still has a flipped y-coordinate bug
         SDL_Texture_Ptr main_minimap_tex;
+
+        // tracks the drawing mode used for the tile type loaded
+        // 0: default draw everything every frame (slower)
+        // 1: blocky tilemap cache for tilesets that do not have oversized sprites
+        // 2: row by row tilemap cache for tilesets that have oversized sprites
+        // 3: unknown cache format for isometric tilesets (default to 0 for now)
+        int cache_draw_mode;
+
+        // tracks the files loaded in the texture vector
+        int tileset_total_files;
+        std::vector< SDL_Texture_Ptr> loaded_tileset_files;
+        std::vector< int> loaded_tileset_heights;
+        std::vector<int> loaded_tileset_widths;
 };
 
 #endif
