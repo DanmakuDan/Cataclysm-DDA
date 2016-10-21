@@ -193,7 +193,7 @@ std::array<std::string, 16> main_color_names{ { "BLACK","RED","GREEN","BROWN","B
 "CYAN","GRAY","DGRAY","LRED","LGREEN","YELLOW","LBLUE","LMAGENTA","LCYAN","WHITE" } };
 static std::array<SDL_Color, 256> windowsPalette;
 static SDL_Window *window = NULL;
-static SDL_Renderer* renderer = NULL;
+SDL_Renderer* renderer;
 static SDL_PixelFormat *format;
 static SDL_Texture *display_buffer;
 int WindowWidth;        //Width of the actual window, not the curses window
@@ -665,7 +665,7 @@ void try_sdl_update()
 void set_displaybuffer_rendertarget()
 {
     if( SDL_SetRenderTarget( renderer, display_buffer ) != 0 ) {
-        dbg(D_ERROR) << "SDL_SetRenderTarget failed: " << SDL_GetError();
+        dbg(D_ERROR) << "set_displaybuffer_rendertarget:SDL_SetRenderTarget() failed: " << SDL_GetError();
     }
 }
 
