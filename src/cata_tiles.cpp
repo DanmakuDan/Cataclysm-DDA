@@ -900,6 +900,16 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
         if(last_tick !=0){
             add_msg("%d draws in %d ticks %f avg", counter, (int)(current_tick-last_tick),1000.0*counter/(double)(current_tick-last_tick));
             add_msg("%d drawtime %f avg", (int)(drawtime),drawtime/(double)(counter));
+        }else{
+            //print render information
+            int test1 = SDL_GetNumRenderDrivers();
+            SDL_RendererInfo ri;
+            for(int i=0;i<test1;i++){
+                SDL_GetRenderDriverInfo(i,&ri);
+                add_msg("n:%s flg:%d nfmt:%d w:%d h:%d",ri.name,ri.flags,ri.num_texture_formats,ri.max_texture_width,ri.max_texture_height);
+            }
+            SDL_GetRendererInfo(renderer, &ri);
+                add_msg("n:%s flg:%d nfmt:%d w:%d h:%d",ri.name,ri.flags,ri.num_texture_formats,ri.max_texture_width,ri.max_texture_height);
         }
         last_tick = current_tick;
         counter = 0;

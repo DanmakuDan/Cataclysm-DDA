@@ -371,7 +371,19 @@ bool WinCreate()
     if( !software_renderer ) {
         dbg( D_INFO ) << "Attempting to initialize accelerated SDL renderer.";
 
-        renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED |
+        int numRenders = SDL_GetNumRenderDrivers();
+        int rendertouse = -1;
+        for(int ii=0;ii<numRenders;ii++){
+            SDL_RendererInfo ri;
+            SDL_GetRenderDriverInfo(ii,&ri);
+            std::string riname = "direct3d";
+            if(riname==ri.name){
+                rendertouse=ii;
+                break;
+            }
+        }
+        //rendertouse = -1;
+        renderer = SDL_CreateRenderer( window, rendertouse, SDL_RENDERER_ACCELERATED |
                                        SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_TARGETTEXTURE );
         if( renderer == NULL ) {
             dbg( D_ERROR ) << "Failed to initialize accelerated renderer, falling back to software rendering: " << SDL_GetError();
