@@ -37,6 +37,8 @@
 #include <stdlib.h>     /* srand, rand */
 #include <sstream>
 
+#include <chrono>
+
 #include <SDL_image.h>
 
 #define dbg(x) DebugLog((DebugLevel)(x),D_SDL) << __FILE__ << ":" << __LINE__ << ": "
@@ -186,7 +188,7 @@ cata_tiles::cata_tiles(SDL_Renderer *render)
     main_map_is_ready = false;
 
     minimap_system.reset(new cache_system<pixel>(this));
-    terrain_system.reset(new cache_system<std::vector<drawing_square>>(this));
+    terrain_system.reset(new tilecache_system(this));
 }
 
 cata_tiles::~cata_tiles()
@@ -895,12 +897,33 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
     static int counter = 0;
     static unsigned long drawtime=0;
     unsigned long current_tick = SDL_GetTicks();
+    std::chrono::steady_clock::time_point dt = std::chrono::steady_clock::now();
     unsigned long end_of_draw_tick = 0;
+
     if(current_tick-last_tick>=5000){
+            if(counter==0)counter=1;
         if(last_tick !=0){
             add_msg("%d draws in %d ticks %f avg", counter, (int)(current_tick-last_tick),1000.0*counter/(double)(current_tick-last_tick));
             add_msg("%d drawtime %f avg", (int)(drawtime),drawtime/(double)(counter));
+            add_msg("%d 1 %f avg", (int)(track1),track1/(double)(counter));
+            add_msg("%d 2 %f avg", (int)(track2),track2/(double)(counter));
+            add_msg("%d 3 %f avg", (int)(track3),track3/(double)(counter));
+            add_msg("%d 4 %f avg", (int)(track4),track4/(double)(counter));
+            add_msg("%d 5 %f avg", (int)(track5),track5/(double)(counter));
+            add_msg("%d 6 %f avg", (int)(track6),track6/(double)(counter));
+    track1=0;
+    track2=0;
+    track3=0;
+    track4=0;
+    track5=0;
+    track6=0;
         }else{
+    track1=0;
+    track2=0;
+    track3=0;
+    track4=0;
+    track5=0;
+    track6=0;
             //print render information
             int test1 = SDL_GetNumRenderDrivers();
             SDL_RendererInfo ri;
@@ -1103,9 +1126,11 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
 
             // light level is now used for choosing between grayscale filter and normal lit tiles.
             // Draw Terrain if possible. If not possible then we need to continue on to the next part of loop
+unsigned long t1 = SDL_GetTicks();
             if( !draw_terrain( tripoint(x,y,center.z), ch.visibility_cache[x][y], height_3d ) ) {
                 continue;
             }
+track1 += SDL_GetTicks() - t1;
 
             draw_points.push_back( tile_render_info( tripoint( x, y, center.z ), height_3d ) );
         }
@@ -1185,7 +1210,9 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
     }
 
     end_of_draw_tick = SDL_GetTicks();
-    drawtime += end_of_draw_tick-current_tick;
+std::chrono::steady_clock::time_point dt2 = std::chrono::steady_clock::now();
+drawtime += std::chrono::duration_cast<std::chrono::microseconds>(dt2-dt).count();
+//    drawtime += end_of_draw_tick-current_tick;
 }
 
 void draw_rhombus(int destx, int desty, int size, SDL_Color color, int widthLimit, int heightLimit) {
@@ -1328,6 +1355,10 @@ drawing_square cata_tiles::get_drawing_square_from_id_string(std::string id, TIL
     ds.is_animated = false;
     ds.is_valid = false;
 
+    static drawing_square ds2;
+    static bool usingds2 = false;
+
+//    if(usingds2)return ds2;
 
     if( !( tile_iso && use_tiles ) &&
         ( pos.x - o_x < 0 || pos.x - o_x >= screentile_width ||
@@ -1342,6 +1373,8 @@ drawing_square cata_tiles::get_drawing_square_from_id_string(std::string id, TIL
 
     std::string seasonal_id = id + season_suffix[calendar::turn.get_season()];
 
+//auto it = tile_ids.find(id);//"t_dirt"
+//auto it = tile_ids.begin();
     auto it = tile_ids.find(seasonal_id);
     if (it == tile_ids.end()) {
         it = tile_ids.find(id);
@@ -1494,6 +1527,7 @@ drawing_square cata_tiles::get_drawing_square_from_id_string(std::string id, TIL
     // translate from player-relative to screen relative tile position
 //    point screen_pos = convert_pos_to_screen_coords(pos);
 
+unsigned long t3 = SDL_GetTicks();
     //retrieve a reproducible PRNG index for the current tile
     unsigned int loc_rand = get_sprite_hash(id, category, pos, display_tile);
 
@@ -1502,6 +1536,12 @@ drawing_square cata_tiles::get_drawing_square_from_id_string(std::string id, TIL
     if(ds.bg.tex!=nullptr || ds.fg.tex!=nullptr){
         ds.is_valid=true;
     }
+track3 += SDL_GetTicks() - t3;
+
+//if(!usingds2){
+//    usingds2=true;
+//    ds2 = ds;
+//}
     return ds;
 
     //draw it!
@@ -1598,14 +1638,14 @@ bool cata_tiles::draw_from_id_string(std::string id, TILE_CATEGORY category,
     constexpr char season_suffix[4][suffix_len] = {
         "_season_spring", "_season_summer", "_season_autumn", "_season_winter"};
 
-    std::string seasonal_id = id + season_suffix[calendar::turn.get_season()];
-
-    auto it = tile_ids.find(seasonal_id);
-    if (it == tile_ids.end()) {
-        it = tile_ids.find(id);
-    } else {
-        id = std::move(seasonal_id);
-    }
+//    std::string seasonal_id = id + season_suffix[calendar::turn.get_season()];
+auto it = tile_ids.find(id);
+//    auto it = tile_ids.find(seasonal_id);
+//    if (it == tile_ids.end()) {
+//        it = tile_ids.find(id);
+//    } else {
+//        id = std::move(seasonal_id);
+//    }
 
     if (it == tile_ids.end()) {
         uint32_t sym = UNKNOWN_UNICODE;
@@ -2234,9 +2274,10 @@ void cata_tiles::get_terrain_tile( std::vector<drawing_square> &vsq, const tripo
     const std::string& tname = t.obj().id.str();
 
     int height_3d = 0;
-
+//unsigned long t3 = SDL_GetTicks();
     sq = get_drawing_square_from_id_string( tname, C_TERRAIN, empty_string, p, subtile, rotation, ll,
                                 nv_goggles_activated, height_3d );
+//track3 += SDL_GetTicks() - t3;
     if(sq.is_valid){
         vsq.push_back(sq);
     }
@@ -3200,6 +3241,34 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
     }
 }
 
+void tilecache_system::draw_to_intermediate_tex(const tripoint &centerpoint, tripoint &p, int start_x, int start_y, SDL_Rect &drawrect){
+    tripoint current_submap_loc = convert_tripoint_to_abs_submap( p );
+    auto it = mapping_cache.find( current_submap_loc );
+
+    //a missing submap cache should be pretty improbable
+    if( it == mapping_cache.end() ) {
+        return;
+    }
+    if( it->second->drawn ) {
+        return;
+    }
+    it->second->drawn = true;
+
+    //the position of the submap texture has to account for the actual (current) 12x12 tile size
+    //the clipping rectangle handles the portions that need to hide
+    point screen_pos = tilecontext->convert_pos_to_screen_coords(p);
+//    tripoint drawpoint( ( p.x / SEEX ) * SEEX - start_x, ( p.y / SEEY ) * SEEY - start_y, p.z );
+//    drawrect.x = drawpoint.x * cachemap_tile_size.x * tilecontext->current_scale/16;
+//    drawrect.y = drawpoint.y * cachemap_tile_size.y * tilecontext->current_scale/16;
+    tripoint drawpoint( screen_pos.x, screen_pos.y, p.z );
+    drawrect.x = drawpoint.x;
+    drawrect.y = drawpoint.y;
+    drawrect.w = SEEX * cachemap_tile_size.x * tilecontext->current_scale/16;
+    drawrect.h = SEEY * cachemap_tile_size.y * tilecontext->current_scale/16;
+    if(SDL_RenderCopy( renderer, it->second->cache_tex.get(), NULL, &drawrect )){
+        dbg( D_ERROR ) << "cache_system::draw_to_intermediate_tex:SDL_RenderCopy() failed: " << SDL_GetError();
+    }
+}
 
     template<typename T> void cache_system<T>::reset_cache_texture(SDL_Texture* tex){
         if(SDL_SetRenderTarget( renderer, tex )){
@@ -3232,6 +3301,39 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
         }
         if(SDL_RenderFillRect( renderer, &fullRect )){
             dbg( D_ERROR ) << "reset_cache_texture:SDL_RenderFillRect() failed: " << SDL_GetError();
+        }
+    }
+    void tilecache_system::reset_cache_texture(SDL_Texture* tex){
+        if(SDL_SetRenderTarget( renderer, tex )){
+            dbg( D_ERROR ) << "cache_system::reset_cache_texture:SDL_SetRenderTarget() failed: " << SDL_GetError();
+        }
+        SDL_Rect fullRect;
+        fullRect.h = SEEY * cachemap_tile_size.y;
+        fullRect.w = SEEX * cachemap_tile_size.x;
+        fullRect.x = 0;
+        fullRect.y = 0;
+        if(SDL_SetRenderDrawColor( renderer, 0, 0, 0, 0 )){
+            dbg( D_ERROR ) << "reset_cache_texture:SDL_SetRenderDrawColor() failed: " << SDL_GetError();
+        }
+        if(SDL_RenderFillRect( renderer, &fullRect )){
+            dbg( D_ERROR ) << "reset_cache_texture:SDL_RenderFillRect() failed: " << SDL_GetError();
+        }
+    }
+       void tilecache_system::paint_to_screen(){
+           if(use_drawtarget_tex){
+            return; //already painted
+           }
+        //set display buffer to main screen
+        if(drawtarget==nullptr){
+            set_displaybuffer_rendertarget();
+        }else{
+            if(SDL_SetRenderTarget(renderer, drawtarget)){
+                dbg( D_ERROR ) << "cache_system::paint_to_screen:SDL_SetRenderTarget() failed: " << SDL_GetError();
+            }
+        }
+        //paint intermediate texture to screen
+        if(SDL_RenderCopy( renderer, cachemap_tex.get(), NULL, &cachemap_clip_rect )){
+            dbg( D_ERROR ) << "cache_system::paint_to_screen:SDL_RenderCopy() failed: " << SDL_GetError();
         }
     }
 
@@ -3282,7 +3384,48 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
         }
     }
 
+    void tilecache_system::process_mapping_cache_updates(){
+        for( auto &mcp : mapping_cache ) {
+            if( !mcp.second->update_list.empty() ) {
+
+                //draw a default dark-colored rectangle over the texture which may have been used previously
+                if( !mcp.second->ready ) {
+                    mcp.second->ready = true;
+                    reset_cache_texture( mcp.second->cache_tex.get() );
+                }else{
+                    //the other branch already sets the render target
+                    if(SDL_SetRenderTarget( renderer, mcp.second->cache_tex.get() )){
+            dbg( D_ERROR ) << "cache_system::process_mapping_cache_updates:SDL_SetRenderTarget() failed: " << SDL_GetError();
+                    }
+                }
+
+                SDL_Rect rectangle;
+                rectangle.w = cachemap_tile_size.x;
+                rectangle.h = cachemap_tile_size.y;
+                for( point &p : mcp.second->update_list ) {
+                    rectangle.x = p.x * cachemap_tile_size.x;
+                    rectangle.y = p.y * cachemap_tile_size.y;
+                    handle_update_render( rectangle, mcp.second->cached_info[p.y * SEEX + p.x]);
+                }
+                mcp.second->update_list.clear();
+            }
+        }
+    }
+
     template<typename T> void cache_system<T>::handle_update_render(SDL_Rect &location, std::vector<drawing_square> current_T){
+            //render an empty black rectangle
+            SDL_SetRenderDrawColor(renderer, 0,0,0,0);
+            SDL_RenderDrawRect(renderer, &location);
+        if(current_T.empty()){
+            return;
+        }
+            point loc = {location.x,location.y};
+        for(size_t i=0;i<current_T.size();i++){
+            int current_height = 0;
+            tilecontext->draw_tile_at( current_T[i], loc, current_height, false );
+        }
+    }
+    void tilecache_system::handle_update_render(SDL_Rect &location, std::vector<drawing_square> current_T){
             //render an empty black rectangle
             SDL_SetRenderDrawColor(renderer, 0,0,0,0);
             SDL_RenderDrawRect(renderer, &location);
@@ -3344,6 +3487,15 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
         }
         previous_submap_view = current_submap_view;
     }
+    void tilecache_system::update_submap_view(){
+        tripoint current_submap_view = g->m.get_abs_sub();
+        tripoint submap_view_diff = current_submap_view - previous_submap_view;
+        if( abs( submap_view_diff.x ) > 1 || abs( submap_view_diff.y ) > 1 ||
+            abs( submap_view_diff.z ) > 0 ) {
+            mapping_cache.clear();
+        }
+        previous_submap_view = current_submap_view;
+    }
 
     template<typename T> void cache_system<T>::process(const tripoint& centerpoint){
         //visibility_cache = g->m.get_visibility_variables_cache();
@@ -3357,6 +3509,21 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
 
         //unused submap caches get deleted
         clear_unused_cachemap_cache();
+    }
+    void tilecache_system::process(const tripoint& centerpoint){
+        //visibility_cache = g->m.get_visibility_variables_cache();
+std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+        //invalidate the cache if the game shifted more than one submap in the last update, or if z-level changed
+        update_submap_view();
+
+        update_cycle( centerpoint);
+
+        paint_to_screen();
+
+        //unused submap caches get deleted
+        clear_unused_cachemap_cache();
+std::chrono::steady_clock::time_point t12 = std::chrono::steady_clock::now();
+tilecontext->track1 += std::chrono::duration_cast<std::chrono::microseconds>(t12-t1).count();
     }
     template<> void cache_system<pixel>::process(const tripoint& centerpoint){
         //invalidate the cache if the game shifted more than one submap in the last update, or if z-level changed
@@ -3378,7 +3545,16 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
             init_cachemap( destx, desty, width, height );
         }
     }
+    void tilecache_system::check_reinit(int destx, int desty, int width, int height){
+        if( !cache_prepared /*|| minimap_reinit_flag*/ ) {
+            dbg( D_ERROR ) << "cache_system::check_reinit: (re)initializing minimap system";
+            //minimap_reinit_flag = false;
+            init_cachemap( destx, desty, width, height );
+        }
+    }
 
+void tilecache_system::draw_enemy_indicators(const tripoint &centerpoint){
+}
 
     template<typename T> void cache_system<T>::draw_enemy_indicators(const tripoint &centerpoint){
         const int start_x = centerpoint.x - cachemap_tiles_limit.x / 2;
@@ -3498,7 +3674,9 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
 
     template<> void cache_system<std::vector<drawing_square>>::update_cycle(const tripoint &center){
         //clear leftover flags for the current draw cycle
+//        unsigned long t1 = SDL_GetTicks();
         prepare_minimap_cache_for_updates();
+//        tilecontext->track1 += SDL_GetTicks() - t1;
 
 //        const int start_x = center.x - cachemap_tiles_limit.x / 2;
 //        const int start_y = center.y - cachemap_tiles_limit.y / 2;
@@ -3510,22 +3688,46 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
         auto vision_cache = g->u.get_vision_modes();
         nv_goggle = vision_cache[NV_GOGGLES];
 
+//        unsigned long t2 = SDL_GetTicks();
+//std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+                tripoint p( 0, 0, center.z );
+    min_visible_x = g->u.posx() % SEEX;
+    min_visible_y = g->u.posy() % SEEY;
+    max_visible_x = ( g->u.posx() % SEEX ) + ( MAPSIZE - 1 ) * SEEX;
+    max_visible_y = ( g->u.posy() % SEEY ) + ( MAPSIZE - 1 ) * SEEY;
         //check all of exposed submaps (MAPSIZE*MAPSIZE submaps) and apply new color changes to the cache
         for( int y = 0; y < MAPSIZE * SEEY; y++ ) {
+//std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
             for( int x = 0; x < MAPSIZE * SEEX; x++ ) {
-                tripoint p( x, y, center.z );
+                    p.x = x;
+            p.y = y;
                 if( y < center_y || y> center_y + cachemap_tiles_limit.y ||
                     x < center_x || x > center_x + cachemap_tiles_limit.x ) {
+//                        unsigned long t3 = SDL_GetTicks();
+//std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
                         touch_minimap_cache(p);
+//std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+//tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
+//                        tilecontext->track3 += SDL_GetTicks() - t3;
                         continue;
                     }
 
+//std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
                 check_for_update(p);
+//std::chrono::steady_clock::time_point t42 = std::chrono::steady_clock::now();
+//tilecontext->track4 += std::chrono::duration_cast<std::chrono::microseconds>(t42-t4).count();
             }
+//std::chrono::steady_clock::time_point t52 = std::chrono::steady_clock::now();
+//tilecontext->track5 += std::chrono::duration_cast<std::chrono::microseconds>(t52-t5).count();
         }
+//std::chrono::steady_clock::time_point t22 = std::chrono::steady_clock::now();
+//tilecontext->track2 += std::chrono::duration_cast<std::chrono::microseconds>(t22-t2).count();
+//        tilecontext->track2 += SDL_GetTicks() - t2;
 
+//        unsigned long t3 = SDL_GetTicks();
         //update minimap textures
         process_mapping_cache_updates();
+//        tilecontext->track3 += SDL_GetTicks() - t3;
         //prepare to copy to intermediate texture
         if(use_drawtarget_tex && drawtarget!=nullptr){
         if(SDL_SetRenderTarget( renderer, drawtarget )){
@@ -3561,6 +3763,7 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
 //                draw_to_intermediate_tex(center, p, center_x, center_y, drawrect);
 //            }
 //        }
+//        unsigned long t4 = SDL_GetTicks();
         for( int y = cachemap_min.y; y < cachemap_max.y; y++ ) {
 //            if( center_y + y < cachemap_min.y || center_y + y >= cachemap_max.y ) {
 //                continue;
@@ -3574,9 +3777,118 @@ template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_
                 draw_to_intermediate_tex(center, p, center_x, center_y, drawrect);
             }
         }
+//        tilecontext->track4 += SDL_GetTicks() - t4;
     }
 
-template<> void cache_system<pixel>::check_for_update(tripoint &p){
+void tilecache_system::update_cycle(const tripoint &center){
+        //clear leftover flags for the current draw cycle
+//        unsigned long t1 = SDL_GetTicks();
+        prepare_minimap_cache_for_updates();
+//        tilecontext->track1 += SDL_GetTicks() - t1;
+
+//        const int start_x = center.x - cachemap_tiles_limit.x / 2;
+//        const int start_y = center.y - cachemap_tiles_limit.y / 2;
+        const int center_x = center.x - POSX;
+        const int center_y = center.y - POSY;
+
+        current_level = &(g->m.access_cache( center.z ));
+        //retrieve night vision goggle status once per draw
+        auto vision_cache = g->u.get_vision_modes();
+        nv_goggle = vision_cache[NV_GOGGLES];
+
+//        unsigned long t2 = SDL_GetTicks();
+std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+                tripoint p( 0, 0, center.z );
+    min_visible_x = g->u.posx() % SEEX;
+    min_visible_y = g->u.posy() % SEEY;
+    max_visible_x = ( g->u.posx() % SEEX ) + ( MAPSIZE - 1 ) * SEEX;
+    max_visible_y = ( g->u.posy() % SEEY ) + ( MAPSIZE - 1 ) * SEEY;
+        //check all of exposed submaps (MAPSIZE*MAPSIZE submaps) and apply new color changes to the cache
+        for( int y = 0; y < MAPSIZE * SEEY; y++ ) {
+std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
+            for( int x = 0; x < MAPSIZE * SEEX; x++ ) {
+                    p.x = x;
+            p.y = y;
+                if( y < center_y || y> center_y + cachemap_tiles_limit.y ||
+                    x < center_x || x > center_x + cachemap_tiles_limit.x ) {
+//                        unsigned long t3 = SDL_GetTicks();
+//std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+                        touch_minimap_cache(p);
+//std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+//tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
+//                        tilecontext->track3 += SDL_GetTicks() - t3;
+                        continue;
+                    }
+
+std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+                check_for_update(p);
+std::chrono::steady_clock::time_point t42 = std::chrono::steady_clock::now();
+tilecontext->track4 += std::chrono::duration_cast<std::chrono::microseconds>(t42-t4).count();
+            }
+std::chrono::steady_clock::time_point t52 = std::chrono::steady_clock::now();
+tilecontext->track5 += std::chrono::duration_cast<std::chrono::microseconds>(t52-t5).count();
+        }
+std::chrono::steady_clock::time_point t22 = std::chrono::steady_clock::now();
+tilecontext->track2 += std::chrono::duration_cast<std::chrono::microseconds>(t22-t2).count();
+//        tilecontext->track2 += SDL_GetTicks() - t2;
+
+//        unsigned long t3 = SDL_GetTicks();
+        //update minimap textures
+        process_mapping_cache_updates();
+//        tilecontext->track3 += SDL_GetTicks() - t3;
+        //prepare to copy to intermediate texture
+        if(use_drawtarget_tex && drawtarget!=nullptr){
+        if(SDL_SetRenderTarget( renderer, drawtarget )){
+            dbg( D_ERROR ) << "cache_system::update_cycle:SDL_SetRenderTarget() failed: " << SDL_GetError();
+        }
+        }else{
+        if(SDL_SetRenderTarget( renderer, cachemap_tex.get() )){
+            dbg( D_ERROR ) << "cache_system::update_cycle:SDL_SetRenderTarget() failed: " << SDL_GetError();
+        }
+        }
+
+        if(prevscale != tilecontext->current_scale){
+            SDL_SetRenderDrawColor(renderer,0,0,0,0);
+            SDL_RenderClear(renderer);
+            prevscale = tilecontext->current_scale;
+        }
+
+        //attempt to draw the submap cache if any of its tiles are exposed in the minimap area
+        //the drawn flag prevents it from being drawn more than once
+        SDL_Rect drawrect;
+        drawrect.w = SEEX * cachemap_tile_size.x;
+        drawrect.h = SEEY * cachemap_tile_size.y;
+//        for( int y = 0; y < cachemap_tiles_limit.y; y++ ) {
+//            if( center_y + y < cachemap_min.y || center_y + y >= cachemap_max.y ) {
+//                continue;
+//            }
+//            for( int x = 0; x < cachemap_tiles_limit.x; x++ ) {
+//                if( center_x + x < cachemap_min.x || center_x + x >= cachemap_max.x ) {
+//                    continue;
+//                }
+//                tripoint p( center_x + x , center_y + y , center.z );//+ tilecontext->o_x+ tilecontext->o_y
+//
+//                draw_to_intermediate_tex(center, p, center_x, center_y, drawrect);
+//            }
+//        }
+//        unsigned long t4 = SDL_GetTicks();
+        for( int y = cachemap_min.y; y < cachemap_max.y; y++ ) {
+//            if( center_y + y < cachemap_min.y || center_y + y >= cachemap_max.y ) {
+//                continue;
+//            }
+            for( int x = cachemap_min.x; x < cachemap_max.x; x++ ) {
+//                if( x < center_x || x >= center_x + cachemap_tiles_limit.x ) {
+//                    continue;
+//                }
+                tripoint p( x , y , center.z );//+ tilecontext->o_x+ tilecontext->o_y
+
+                draw_to_intermediate_tex(center, p, center_x, center_y, drawrect);
+            }
+        }
+//        tilecontext->track4 += SDL_GetTicks() - t4;
+    }
+
+template<> void cache_system<pixel>::check_for_update(const tripoint &p){
     lit_level lighting = current_level->visibility_cache[p.x][p.y];
     SDL_Color color;
     color.a = 255;
@@ -3612,28 +3924,86 @@ template<> void cache_system<pixel>::check_for_update(tripoint &p){
     update_minimap_cache( p, pix );
 }
 
-template<> void cache_system<std::vector<drawing_square>>::check_for_update(tripoint &p){
-    const int min_visible_x = g->u.posx() % SEEX;
-    const int min_visible_y = g->u.posy() % SEEY;
-    const int max_visible_x = ( g->u.posx() % SEEX ) + ( MAPSIZE - 1 ) * SEEX;
-    const int max_visible_y = ( g->u.posy() % SEEY ) + ( MAPSIZE - 1 ) * SEEY;
+template<> void cache_system<std::vector<drawing_square>>::check_for_update(const tripoint &p){
+//unsigned long t4 = SDL_GetTicks();
+//std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+//unsigned long t6 = SDL_GetTicks();
+std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
     lit_level lighting = current_level->visibility_cache[p.x][p.y];
     std::vector<drawing_square> vsq;
+//    vsq.reserve(1);
     if(p.x<min_visible_x||p.x>max_visible_x||p.y<min_visible_y||p.y>max_visible_y){
-    }else
-    if( tilecontext->add_vision_effects( vsq, p, g->m.get_visibility( lighting, g->m.get_visibility_variables_cache() ) ) ) {
-        const auto critter = g->critter_at( tripoint(p.x,p.y,p.z), true );
-        if( critter != nullptr && g->u.sees_with_infrared( *critter ) ) {
+    }else{
+//unsigned long t3 = SDL_GetTicks();
+        bool result = tilecontext->add_vision_effects( vsq, p, g->m.get_visibility( lighting, g->m.get_visibility_variables_cache() ) );
+//tilecontext->track3 += SDL_GetTicks()-t3;
+        if( result ) {
+            const auto critter = g->critter_at( tripoint(p.x,p.y,p.z), true );
+            if( critter != nullptr && g->u.sees_with_infrared( *critter ) ) {
             //TODO defer drawing this until later when we know how tall
             //     the terrain/furniture under the creature is.
-    drawing_square sq = tilecontext->get_drawing_square_from_id_string( "infrared_creature", C_NONE, empty_string, p, 0, 0, LL_LIT, false );
-    vsq.push_back(sq);
+                drawing_square sq = tilecontext->get_drawing_square_from_id_string( "infrared_creature", C_NONE, empty_string, p, 0, 0, LL_LIT, false );
+                vsq.push_back(sq);
+            }
+        }else{
+//unsigned long t1 = SDL_GetTicks();
+            tilecontext->get_terrain_tile(vsq, p, lighting);
+//tilecontext->track1 += SDL_GetTicks() - t1;
         }
-    }else{
-    tilecontext->get_terrain_tile(vsq, p, lighting);
     }
+//tilecontext->track6 += SDL_GetTicks() - t6;
+//        unsigned long t5 = SDL_GetTicks();
     //add an individual color update to the cache
     update_minimap_cache( p, vsq );
+std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
+//tilecontext->track5 += SDL_GetTicks() - t5;
+//tilecontext->track4 += SDL_GetTicks() - t4;
+//std::chrono::steady_clock::time_point t42 = std::chrono::steady_clock::now();
+//tilecontext->track4 += std::chrono::duration_cast<std::chrono::microseconds>(t42-t4).count();
+}
+
+void tilecache_system::check_for_update(const tripoint &p){
+//unsigned long t4 = SDL_GetTicks();
+//std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+//unsigned long t6 = SDL_GetTicks();
+std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+    lit_level lighting = current_level->visibility_cache[p.x][p.y];
+    std::vector<drawing_square> vsq;
+//    update_minimap_cache( p, vsq );
+//std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+//tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
+//    return;
+    vsq.reserve(1);
+    if(p.x<min_visible_x||p.x>max_visible_x||p.y<min_visible_y||p.y>max_visible_y){
+    }else{
+//unsigned long t3 = SDL_GetTicks();
+        bool result = tilecontext->add_vision_effects( vsq, p, g->m.get_visibility( lighting, g->m.get_visibility_variables_cache() ) );
+//tilecontext->track3 += SDL_GetTicks()-t3;
+        if( result ) {
+            const auto critter = g->critter_at( tripoint(p.x,p.y,p.z), true );
+            if( critter != nullptr && g->u.sees_with_infrared( *critter ) ) {
+            //TODO defer drawing this until later when we know how tall
+            //     the terrain/furniture under the creature is.
+                drawing_square sq = tilecontext->get_drawing_square_from_id_string( "infrared_creature", C_NONE, empty_string, p, 0, 0, LL_LIT, false );
+                vsq.push_back(sq);
+            }
+        }else{
+//unsigned long t1 = SDL_GetTicks();
+            tilecontext->get_terrain_tile(vsq, p, lighting);
+//tilecontext->track1 += SDL_GetTicks() - t1;
+        }
+    }
+//tilecontext->track6 += SDL_GetTicks() - t6;
+//        unsigned long t5 = SDL_GetTicks();
+    //add an individual color update to the cache
+    update_minimap_cache( p, vsq );
+std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
+//tilecontext->track5 += SDL_GetTicks() - t5;
+//tilecontext->track4 += SDL_GetTicks() - t4;
+//std::chrono::steady_clock::time_point t42 = std::chrono::steady_clock::now();
+//tilecontext->track4 += std::chrono::duration_cast<std::chrono::microseconds>(t42-t4).count();
 }
 
     //finds the correct submap cache and applies the new minimap color blip if it doesn't match the current one
@@ -3659,8 +4029,32 @@ template<> void cache_system<std::vector<drawing_square>>::check_for_update(trip
         }
     }
 
+    //finds the correct submap cache and applies the new minimap color blip if it doesn't match the current one
+    void tilecache_system::update_minimap_cache( const tripoint &loc, std::vector<drawing_square> &pix )
+    {
+        tripoint current_submap_loc = convert_tripoint_to_abs_submap( loc );
+        auto it = mapping_cache.find( current_submap_loc );
+        if( it == mapping_cache.end() ) {
+            mapping_cache.insert( std::pair<tripoint, submap_cache_ptr>( current_submap_loc,
+                                  submap_cache_ptr( new submap_cache<std::vector<drawing_square>>(SEEX, SEEY, tex_pool.get()) ) ) );
+            it = mapping_cache.find( current_submap_loc );
+        }
+
+        it->second->touched = true;
+
+        point offset( loc.x, loc.y );
+        ms_to_sm_remain( offset );
+
+        std::vector<drawing_square> &current_T = it->second->cached_info[offset.y * SEEX + offset.x];
+        if( current_T != pix ) {
+            current_T = pix;
+            it->second->update_list.push_back( offset );
+        }
+    }
+
     template<typename T> void cache_system<T>::touch_minimap_cache( const tripoint &loc )
     {
+//std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
         tripoint current_submap_loc = convert_tripoint_to_abs_submap( loc );
         auto it = mapping_cache.find( current_submap_loc );
         if( it == mapping_cache.end() ) {
@@ -3670,6 +4064,23 @@ template<> void cache_system<std::vector<drawing_square>>::check_for_update(trip
         }
 
         it->second->touched = true;
+//std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+//tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
+    }
+    void tilecache_system::touch_minimap_cache( const tripoint &loc )
+    {
+//std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+        tripoint current_submap_loc = convert_tripoint_to_abs_submap( loc );
+        auto it = mapping_cache.find( current_submap_loc );
+        if( it == mapping_cache.end() ) {
+            mapping_cache.insert( std::pair<tripoint, submap_cache_ptr>( current_submap_loc,
+                                  submap_cache_ptr( new submap_cache<std::vector<drawing_square>>(SEEX, SEEY, tex_pool.get()) ) ) );
+            it = mapping_cache.find( current_submap_loc );
+        }
+
+        it->second->touched = true;
+//std::chrono::steady_clock::time_point t32 = std::chrono::steady_clock::now();
+//tilecontext->track3 += std::chrono::duration_cast<std::chrono::microseconds>(t32-t3).count();
     }
 
         //persistent tiled minimap values
@@ -3764,7 +4175,56 @@ template<> void cache_system<std::vector<drawing_square>>::check_for_update(trip
         tex_pool.reset( new shared_texture_pool(cachemap_tile_size.x * SEEX, cachemap_tile_size.y * SEEY) );
     }
 
+    void tilecache_system::init_cachemap(int destx, int desty, int width, int height ){
+//        cache_renderer = renderer;
+        cache_prepared = true;
+        cachemap_min.x = 0;
+        cachemap_min.y = 0;
+        cachemap_max.x = MAPSIZE * SEEX;
+        cachemap_max.y = MAPSIZE * SEEY;
+        cachemap_tiles_range.x = ( MAPSIZE - 2 ) * SEEX;
+        cachemap_tiles_range.y = ( MAPSIZE - 2 ) * SEEY;
+        cachemap_tile_size.x = tilecontext->default_tile_width * tilecontext->tile_pixelscale; //std::max( width / cachemap_tiles_range.x, 1 );
+        cachemap_tile_size.y = tilecontext->default_tile_height* tilecontext->tile_pixelscale; //std::max( height / cachemap_tiles_range.y, 1 );
+        //maintain a square "pixel" shape
+//        if( get_option<bool>( "PIXEL_MINIMAP_RATIO" ) ) {
+//            int smallest_size = std::min( cachemap_tile_size.x, cachemap_tile_size.y );
+//            cachemap_tile_size.x = smallest_size;
+//            cachemap_tile_size.y = smallest_size;
+//        }
+        cachemap_tiles_limit.x = std::min( width / cachemap_tile_size.x, cachemap_tiles_range.x );
+        cachemap_tiles_limit.y = std::min( height / cachemap_tile_size.y, cachemap_tiles_range.y );
+        // Center the drawn area within the total area.
+        cachemap_drawn_width = cachemap_tiles_limit.x * cachemap_tile_size.x;
+        cachemap_drawn_height = cachemap_tiles_limit.y * cachemap_tile_size.y;
+        cachemap_border_width = 0;//std::max( ( width - cachemap_drawn_width ) / 2, 0 );
+        cachemap_border_height = 0;//std::max( ( height - cachemap_drawn_height ) / 2, 0 );
+        //prepare the minimap clipped area
+        cachemap_clip_rect.x = destx + cachemap_border_width;
+        cachemap_clip_rect.y = desty + cachemap_border_height;
+        cachemap_clip_rect.w = width - cachemap_border_width * 2;
+        cachemap_clip_rect.h = height - cachemap_border_height * 2;
+
+        cachemap_original_rect.x = destx;
+        cachemap_original_rect.y = desty;
+        cachemap_original_rect.w = width;
+        cachemap_original_rect.h = height;
+
+        cachemap_tex.reset();
+        cachemap_tex = create_drawing_texture( cachemap_clip_rect.w, cachemap_clip_rect.h);
+
+        previous_submap_view = tripoint( INT_MIN, INT_MIN, INT_MIN );
+
+            dbg( D_ERROR ) << "cache_system::init_cachemap: generating mini cache textures";
+        mapping_cache.clear();
+        tex_pool.reset( new shared_texture_pool(cachemap_tile_size.x * SEEX, cachemap_tile_size.y * SEEY) );
+    }
+
     template<typename T> void cache_system<T>::update_cachemap_tiles_limit(int sx, int sy){
+        cachemap_tiles_limit.x = sx;
+        cachemap_tiles_limit.y = sy;
+    }
+    void tilecache_system::update_cachemap_tiles_limit(int sx, int sy){
         cachemap_tiles_limit.x = sx;
         cachemap_tiles_limit.y = sy;
     }

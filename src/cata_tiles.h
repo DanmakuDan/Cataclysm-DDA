@@ -419,6 +419,116 @@ private:
     //reserve the SEEX * SEEY submap tiles
 //    template<> submap_cache<pixel>::submap_cache(shared_texture_pool* pool);
 
+struct tilecache_system{
+    using submap_cache_ptr = std::unique_ptr< submap_cache<std::vector<drawing_square>> >;
+    using shared_texture_pool_ptr = std::unique_ptr< shared_texture_pool >;
+    std::map< tripoint, submap_cache_ptr> mapping_cache;
+    //pixel minimap cache methods
+
+    void reset_cache_texture(SDL_Texture* tex);
+
+//    void handle_update_render(SDL_Rect &location, T current_T){}
+    void handle_update_render(SDL_Rect &location, std::vector<drawing_square> current_T);
+    //draws individual updates to the submap cache texture
+    //the render target will be set back to display_buffer after all submaps are updated
+    void process_mapping_cache_updates();
+
+    //finds the correct submap cache and applies the new minimap color blip if it doesn't match the current one
+    void update_minimap_cache( const tripoint &loc, std::vector<drawing_square> &pix );
+
+    //resets the touched and drawn properties of each active submap cache
+    void prepare_minimap_cache_for_updates()
+    {
+        for(auto &mcp : mapping_cache) {
+            mcp.second->touched = false;
+            mcp.second->drawn = false;
+        }
+    }
+
+    //deletes the mapping of unused submap caches from the main map
+    //the touched flag prevents deletion
+    void clear_unused_cachemap_cache()
+    {
+        for(auto it = mapping_cache.begin(); it != mapping_cache.end(); ) {
+            if(!it->second->touched) {
+                mapping_cache.erase(it++);
+            } else {
+                it++;
+            }
+        }
+    }
+
+
+//    SDL_Renderer* cache_renderer;
+    //persistent tiled minimap values
+    void init_cachemap( int destx, int desty, int width, int height );
+
+    void paint_to_screen();
+
+    void update_submap_view();
+
+    void check_for_update(const tripoint &p);
+
+    void draw_to_intermediate_tex(const tripoint &centerpoint, tripoint &p, int start_x, int start_y, SDL_Rect &drawrect);
+    void update_cachemap_tiles_limit(int sx, int sy);
+
+    void update_cycle(const tripoint &centerpoint);
+    void process(const tripoint& centerpoint);
+
+    void draw_enemy_indicators(const tripoint &center);
+
+    void check_reinit(int destx, int desty, int width, int height);
+
+    void touch_minimap_cache( const tripoint &loc );
+
+    tilecache_system(cata_tiles* context){
+        tilecontext = context;
+        tex_pool.reset(new shared_texture_pool(1,1,1));
+        cache_prepared = false;
+        drawtarget = nullptr;
+        prevscale = INT_MIN;
+        use_drawtarget_tex = false;
+    }
+
+    int prevscale;
+    SDL_Texture* drawtarget;
+    bool use_drawtarget_tex;
+    visibility_variables* visibility_cache;
+    shared_texture_pool_ptr tex_pool;
+    bool cache_prepared;
+    point cachemap_min;
+    point cachemap_max;
+    point cachemap_tiles_range;
+    point cachemap_tile_size;
+    point cachemap_tiles_limit;
+
+    //track where the for loop starts/ends instead of using tile limit
+    point tilecount_start;
+    point tilecount_end;
+    int cachemap_drawn_width;
+    int cachemap_drawn_height;
+    int cachemap_border_width;
+    int cachemap_border_height;
+    SDL_Rect cachemap_clip_rect;
+    //track the previous viewing area to determine if the minimap cache needs to be cleared
+    tripoint previous_submap_view;
+    bool cachemap_reinit_flag; //set to true to force a reallocation of minimap details
+    //place all submaps on this texture before rendering to screen
+    //replaces clipping rectangle usage while SDL still has a flipped y-coordinate bug
+    SDL_Texture_Ptr cachemap_tex;
+    level_cache* current_level;
+    bool nv_goggle;
+    cata_tiles* tilecontext;
+    SDL_Rect cachemap_original_rect;
+
+
+    int min_visible_x;
+    int min_visible_y;
+    int max_visible_x;
+    int max_visible_y;
+private:
+    tilecache_system(){}
+};
 
 template<typename T> struct cache_system{
     using submap_cache_ptr = std::unique_ptr< submap_cache<T> >;
@@ -469,7 +579,7 @@ template<typename T> struct cache_system{
 
     void update_submap_view();
 
-    void check_for_update(tripoint &p){
+    void check_for_update(const tripoint &p){
     }
 
     void draw_to_intermediate_tex(const tripoint &centerpoint, tripoint &p, int start_x, int start_y, SDL_Rect &drawrect);
@@ -523,17 +633,23 @@ template<typename T> struct cache_system{
     bool nv_goggle;
     cata_tiles* tilecontext;
     SDL_Rect cachemap_original_rect;
+
+
+    int min_visible_x;
+    int min_visible_y;
+    int max_visible_x;
+    int max_visible_y;
 private:
     cache_system(){}
 };
 
 //template<> void cache_system<pixel>::draw_to_intermediate_tex(tripoint &p, int start_x, int start_y, SDL_Rect &drawrect);
-template<> void cache_system<pixel>::check_for_update( tripoint &p);
+template<> void cache_system<pixel>::check_for_update(const tripoint &p);
 template<> void cache_system<std::vector<drawing_square>>::init_cachemap(int destx, int desty, int width, int height );
 template<> void cache_system<pixel>::process(const tripoint& centerpoint);
 template<> void cache_system<std::vector<drawing_square>>::reset_cache_texture(SDL_Texture* tex);
 template<> void cache_system<std::vector<drawing_square>>::draw_to_intermediate_tex(const tripoint &centerpoint, tripoint &p, int start_x, int start_y, SDL_Rect &drawrect);
-template<> void cache_system<std::vector<drawing_square>>::check_for_update( tripoint &p);
+template<> void cache_system<std::vector<drawing_square>>::check_for_update(const tripoint &p);
 template<> void cache_system<std::vector<drawing_square>>::update_cycle(const tripoint &centerpoint);
 //template<> void cache_system<pixel>::handle_update_render(SDL_Rect &location, pixel current_T);
 
@@ -902,10 +1018,17 @@ SDL_Surface_Ptr create_tile_surface();
 
         using pixel_cache_system_ptr = std::unique_ptr<cache_system<pixel>>;
         pixel_cache_system_ptr minimap_system;
-        using terrain_cache_system_ptr = std::unique_ptr<cache_system<std::vector<drawing_square>>>;
+        using terrain_cache_system_ptr = std::unique_ptr<tilecache_system>;
         terrain_cache_system_ptr terrain_system;
 public:
         drawing_square get_terrain_tile( const tripoint &p, lit_level ll);
+
+        unsigned long track1;
+        unsigned long track2;
+        unsigned long track3;
+        unsigned long track4;
+        unsigned long track5;
+        unsigned long track6;
 };
 
 #endif
