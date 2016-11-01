@@ -568,6 +568,12 @@ class cata_tiles
         //place all submaps on this texture before rendering to screen
         //replaces clipping rectangle usage while SDL still has a flipped y-coordinate bug
         SDL_Texture_Ptr main_minimap_tex;
+
+        // accumulates drawn tiles before moving all of it to screen
+        SDL_Texture_Ptr main_map_tex;
+        bool main_map_is_ready;
+        SDL_Rect main_map_location_rect;
+        SDL_Rect main_map_rect;
 };
 
 #endif

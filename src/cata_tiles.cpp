@@ -106,6 +106,8 @@ cata_tiles::cata_tiles(SDL_Renderer *render)
     minimap_prep = false;
     minimap_reinit_flag = false;
 
+    main_map_is_ready = false;
+
     last_pos_x = 0;
     last_pos_y = 0;
 }
@@ -857,15 +859,17 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
         return;
     }
 
-    {
-        //set clipping to prevent drawing over stuff we shouldn't
-        SDL_Rect clipRect = {destx, desty, width, height};
-        SDL_RenderSetClipRect(renderer, &clipRect);
-
-        //fill render area with black to prevent artifacts where no new pixels are drawn
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderFillRect(renderer, &clipRect);
+    // the map rect could be set up with an init function instead
+    if( !main_map_is_ready ){
+        main_map_tex.reset();
+        main_map_tex = create_minimap_cache_texture(width, height);
+        main_map_is_ready = true;
+        main_map_rect = { 0, 0, width, height };
+        main_map_location_rect = { destx, desty, width, height };
     }
+    SDL_SetRenderTarget(renderer, main_map_tex.get());
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
 
     int posx = center.x;
     int posy = center.y;
@@ -1029,7 +1033,11 @@ void cata_tiles::draw( int destx, int desty, const tripoint &center, int width, 
         }
     }
 
-    SDL_RenderSetClipRect(renderer, NULL);
+    //set display buffer to main screen
+    set_displaybuffer_rendertarget();
+    if(SDL_RenderCopy( renderer, main_map_tex.get(), NULL, &main_map_location_rect )){
+            dbg( D_ERROR ) << "cata_tiles::draw:SDL_RenderCopy() failed: " << SDL_GetError();
+    }
 }
 
 void cata_tiles::draw_rhombus(int destx, int desty, int size, SDL_Color color, int widthLimit, int heightLimit) {
