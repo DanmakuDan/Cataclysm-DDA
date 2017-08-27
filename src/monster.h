@@ -169,7 +169,7 @@ class monster : public Creature, public JsonSerializer, public JsonDeserializer
         // Pass all factions to mon, so that hordes of same-faction mons
         // do not iterate over each other
         void plan( const mfactions &factions );
-        void move(); // Actual movement
+        void move( bool allow_special_cooldown_tick ); // Actual movement
         void footsteps( const tripoint &p ); // noise made by movement
 
         tripoint scent_move();

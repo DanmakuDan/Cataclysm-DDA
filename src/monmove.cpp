@@ -373,7 +373,7 @@ static float get_stagger_adjust( const tripoint &source, const tripoint &destina
 // 2) Sight-based tracking
 // 3) Scent-based tracking
 // 4) Sound-based tracking
-void monster::move()
+void monster::move( bool allow_special_cooldown_tick )
 {
     // We decrement wandf no matter what.  We'll save our wander_to plans until
     // after we finish out set_dest plans, UNLESS they time out first.
@@ -420,7 +420,7 @@ void monster::move()
             continue;
         }
 
-        if( local_attack_data.cooldown > 0 ) {
+        if( local_attack_data.cooldown > 0 && allow_special_cooldown_tick ) {
             local_attack_data.cooldown--;
         }
 

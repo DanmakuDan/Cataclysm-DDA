@@ -5938,6 +5938,13 @@ void game::monmove()
 
         m.creature_in_field( critter );
 
+        // If a monster spends a low amount of move points per turn, its special attacks
+        // can cool down earlier than expected. Combined with a move-point-granting
+        // special ability, this can lead to an infinite loop in some cases.
+        // This restricts the special attack timers decrementing to once per 100 moves.
+        int critter_previous_moves = critter.moves;
+        bool allow_special_cooldown_tick = true;
+
         while (critter.moves > 0 && !critter.is_dead()) {
             critter.made_footstep = false;
             // Controlled critters don't make their own plans
@@ -5945,7 +5952,16 @@ void game::monmove()
                 // Formulate a path to follow
                 critter.plan( monster_factions );
             }
-            critter.move(); // Move one square, possibly hit u
+
+            if (critter_previous_moves - 100 > critter.moves) {
+                allow_special_cooldown_tick = true;
+                critter_previous_moves -= 100;
+            }
+
+            critter.move( allow_special_cooldown_tick ); // Move one square, possibly hit u
+
+            allow_special_cooldown_tick = false;
+
             critter.process_triggers();
             m.creature_in_field( critter );
         }
@@ -10887,7 +10903,7 @@ void game::chat()
 
     uimenu nmenu;
     nmenu.text = std::string( _( "Who do you want to talk to or yell at?" ) );
-    
+
     int i = 0;
 
     for( auto &elem : available ) {
