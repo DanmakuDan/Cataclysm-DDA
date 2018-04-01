@@ -358,13 +358,30 @@ void monster::plan( const mfactions &factions )
 static float get_stagger_adjust( const tripoint &source, const tripoint &destination,
                                  const tripoint &next_step )
 {
-    // TODO: push this down into rl_dist
-    const float initial_dist =
-        trigdist ? trig_dist( source, destination ) : rl_dist( source, destination );
-    const float new_dist =
-        trigdist ? trig_dist( next_step, destination ) : rl_dist( next_step, destination );
+    // both trig and blocky distances are calculated to check for the case where source and
+    //  next_step are equally distant in both distance systems
+    // the path planner for monsters will only check one step after the move is made,
+    //  which will result in time-consuming oscillation in pathing between source and
+    //  next_step, since they are equally valid spaces which cost only 1 move based on the
+    //  clamping that prevents cancelling the monster's move action
+    const float initial_dist_trig = trig_dist( source, destination );
+    const float new_dist_trig = trig_dist( next_step, destination );
+    const float init_dist_rl = rl_dist( source, destination );
+    const float new_dist_rl = rl_dist( next_step, destination );
+
+    // charge the creature a normal move amount if it would have repeatedly moved between
+    //  source and next_step (steps are equally distant)
+    if( abs( new_dist_trig - initial_dist_trig ) < 0.01f &&
+        abs( new_dist_rl - init_dist_rl ) < 0.01f ) {
+        return 1.0f;
+    }
+
     // If we return 0, it wil cancel the action.
-    return std::max( 0.01f, initial_dist - new_dist );
+    if( trigdist ) {
+        return std::max( 0.01f, initial_dist_trig - new_dist_trig );
+    } else {
+        return std::max( 0.01f, init_dist_rl - new_dist_rl );
+    }
 }
 
 // General movement.
