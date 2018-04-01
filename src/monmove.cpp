@@ -450,6 +450,7 @@ void monster::move()
             reset_special( special_name );
         }
     }
+    add_msg( m_debug, "boop %d",moves );
 
     // The monster can sometimes hang in air due to last fall being blocked
     const bool can_fly = has_flag( MF_FLIES );

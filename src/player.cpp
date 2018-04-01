@@ -806,7 +806,9 @@ void player::process_turn()
     // Has to happen before reset_stats
     clear_miss_reasons();
 
+    add_msg( m_debug, "boop6-1" );
     Character::process_turn();
+    add_msg( m_debug, "boop6-2" );
 
     // Didn't just pick something up
     last_item = itype_id( "null" );
@@ -5388,6 +5390,7 @@ void player::process_effects() {
     }
 
     Creature::process_effects();
+
 }
 
 double player::vomit_mod()

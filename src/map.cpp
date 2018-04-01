@@ -4697,7 +4697,9 @@ static void process_vehicle_items( vehicle &cur_veh, int part )
 
 void map::process_active_items()
 {
+    add_msg( m_debug, "boop8-1" );
     process_items( true, process_map_items, std::string {} );
+    add_msg( m_debug, "boop8-2" );
 }
 
 template<typename T>
@@ -4718,7 +4720,9 @@ void map::process_items( bool const active, T processor, std::string const &sign
                     process_items_in_vehicles( *current_submap, processor, signal );
                 }
                 if( !active || !current_submap->active_items.empty() ) {
+    add_msg( m_debug, "boop9-1" );
                     process_items_in_submap( *current_submap, gp, processor, signal );
+    add_msg( m_debug, "boop9-2" );
                 }
             }
         }

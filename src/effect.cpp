@@ -675,7 +675,7 @@ void effect::set_duration( int dur, bool alert )
         set_intensity( ( duration / eff_type->int_dur_factor ) + 1, alert );
     }
 
-    add_msg( m_debug, "ID: %s, Duration %d", get_id().c_str(), duration );
+//    add_msg( m_debug, "ID: %s, Duration %d", get_id().c_str(), duration );
 }
 void effect::mod_duration( int dur, bool alert )
 {

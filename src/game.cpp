@@ -1395,9 +1395,15 @@ void game::calc_driving_offset(vehicle *veh)
 // Returns true if game is over (death, saved, quit, etc)
 bool game::do_turn()
 {
+    add_msg( m_debug, "boop7-14.1" );
+        draw();
+        refresh_display();
     if (is_game_over()) {
         return cleanup_at_end();
     }
+    add_msg( m_debug, "boop7-21" );
+        draw();
+        refresh_display();
     // Actual stuff
     if( new_game ) {
         new_game = false;
@@ -1405,6 +1411,9 @@ bool game::do_turn()
         gamemode->per_turn();
         calendar::turn.increment();
     }
+    add_msg( m_debug, "boop7-22" );
+        draw();
+        refresh_display();
 
     if( npcs_dirty ) {
         load_npcs();
@@ -1429,8 +1438,14 @@ bool game::do_turn()
         // make them spawn in invisible areas only.
         m.spawn_monsters( false );
     }
+    add_msg( m_debug, "boop7-23" );
+        draw();
+        refresh_display();
 
     u.update_body();
+    add_msg( m_debug, "boop7-24" );
+        draw();
+        refresh_display();
 
     // Auto-save if autosave is enabled
     if( get_option<bool>( "AUTOSAVE" ) &&
@@ -1438,9 +1453,18 @@ bool game::do_turn()
         !u.is_dead_state()) {
         autosave();
     }
+    add_msg( m_debug, "boop7-24.1" );
+        draw();
+        refresh_display();
 
     update_weather();
+    add_msg( m_debug, "boop7-24.2" );
+        draw();
+        refresh_display();
     reset_light_level();
+    add_msg( m_debug, "boop7-24.3" );
+        draw();
+        refresh_display();
 
     // The following happens when we stay still; 10/40 minutes overdue for spawn
     if ((!u.has_trait( trait_INCONSPICUOUS ) && calendar::turn > nextspawn + 100_turns) ||
@@ -1449,11 +1473,22 @@ bool game::do_turn()
         nextspawn = calendar::turn;
     }
 
+    add_msg( m_debug, "boop7-15" );
+        draw();
+        refresh_display();
     process_activity();
+    add_msg( m_debug, "boop7-16" );
+        draw();
+        refresh_display();
 
     // Process sound events into sound markers for display to the player.
     sounds::process_sound_markers( &u );
 
+    add_msg( m_debug, "boop7-16.1" );
+        draw();
+        refresh_display();
+    add_msg( m_debug, "%d moves",u.moves);
+//        if(u.moves<1)u.moves=1;
     if (!u.in_sleep_state()) {
         if (u.moves > 0 || uquit == QUIT_WATCH) {
             while (u.moves > 0 || uquit == QUIT_WATCH) {
@@ -1487,6 +1522,9 @@ bool game::do_turn()
             handle_key_blocking_activity();
         }
     }
+    add_msg( m_debug, "boop7-17" );
+        draw();
+        refresh_display();
 
     if( driving_view_offset.x != 0 || driving_view_offset.y != 0 ) {
         // Still have a view offset, but might not be driving anymore,
@@ -1496,6 +1534,9 @@ bool game::do_turn()
         vehicle *veh = m.veh_at(u.pos());
         calc_driving_offset(veh);
     }
+    add_msg( m_debug, "boop7-17.1" );
+        draw();
+        refresh_display();
 
     // No-scent debug mutation has to be processed here or else it takes time to start working
     if( !u.has_active_bionic( bionic_id( "bio_scent_mask" ) ) &&
@@ -1503,14 +1544,29 @@ bool game::do_turn()
         scent.set( u.pos(), u.scent );
         overmap_buffer.set_scent( u.global_omt_location(),  u.scent );
     }
+    add_msg( m_debug, "boop7-17.2" );
+        draw();
+        refresh_display();
     scent.update( u.pos(), m );
+    add_msg( m_debug, "boop7-18" );
+        draw();
+        refresh_display();
 
     // We need floor cache before checking falling 'n stuff
     m.build_floor_caches();
+    add_msg( m_debug, "boop7-18.1" );
+        draw();
+        refresh_display();
 
     m.process_falling();
+    add_msg( m_debug, "boop7-18.2" );
+        draw();
+        refresh_display();
     m.vehmove();
 
+    add_msg( m_debug, "boop7-19" );
+        draw();
+        refresh_display();
     // Process power and fuel consumption for all vehicles, including off-map ones.
     // m.vehmove used to do this, but now it only give them moves instead.
     for( auto &elem : MAPBUFFER ) {
@@ -1529,24 +1585,50 @@ bool game::do_turn()
     m.process_fields();
     m.process_active_items();
     m.creature_in_field( u );
+    add_msg( m_debug, "boop7-20" );
+        draw();
+        refresh_display();
 
     // Apply sounds from previous turn to monster and NPC AI.
     sounds::process_sounds();
+    add_msg( m_debug, "boop7-25" );
+        draw();
+        refresh_display();
     // Update vision caches for monsters. If this turns out to be expensive,
     // consider a stripped down cache just for monsters.
     m.build_map_cache( get_levz(), true );
+    add_msg( m_debug, "boop7-26" );
+        draw();
+        refresh_display();
     monmove();
+    add_msg( m_debug, "boop7-27" );
+        draw();
+        refresh_display();
     update_stair_monsters();
+    add_msg( m_debug, "boop7-1" );
+        draw();
+        refresh_display();
     u.process_turn();
+    add_msg( m_debug, "boop7-2" );
     if( u.moves < 0 && get_option<bool>( "FORCE_REDRAW" ) ) {
         draw();
         refresh_display();
     }
+    add_msg( m_debug, "boop7-2.1" );
+        draw();
+        refresh_display();
+    
     u.process_active_items();
+    add_msg( m_debug, "boop7-3" );
+        draw();
+        refresh_display();
 
     if (get_levz() >= 0 && !u.is_underwater()) {
         weather_data(weather).effect();
     }
+    add_msg( m_debug, "boop7-4" );
+        draw();
+        refresh_display();
 
     const bool player_is_sleeping = u.has_effect( effect_sleep );
 
@@ -1564,25 +1646,56 @@ bool game::do_turn()
             refresh_display();
         }
     }
+    add_msg( m_debug, "boop7-5" );
+        draw();
+        refresh_display();
 
     player_was_sleeping = player_is_sleeping;
 
+    add_msg( m_debug, "boop7-6" );
+        draw();
+        refresh_display();
     u.update_bodytemp();
+    add_msg( m_debug, "boop7-7" );
+        draw();
+        refresh_display();
     u.update_body_wetness( *weather_precise );
+    add_msg( m_debug, "boop7-8" );
+        draw();
+        refresh_display();
     u.apply_wetness_morale( temperature );
+    add_msg( m_debug, "boop7-9" );
+        draw();
+        refresh_display();
     u.do_skill_rust();
+    add_msg( m_debug, "boop7-10" );
+        draw();
+        refresh_display();
 
     if( calendar::once_every( 1_minutes ) ) {
         u.update_morale();
     }
+    add_msg( m_debug, "boop7-11" );
+        draw();
+        refresh_display();
 
     if( calendar::once_every( 9_turns ) ) {
         u.check_and_recover_morale();
     }
+    add_msg( m_debug, "boop7-12" );
+        draw();
+        refresh_display();
 
     sfx::remove_hearing_loss();
+    add_msg( m_debug, "boop7-13" );
+        draw();
+        refresh_display();
     sfx::do_danger_music();
     sfx::do_fatigue();
+    add_msg( m_debug, "boop7-14" );
+        draw();
+        refresh_display();
+    SDL_Delay(10);
 
     return false;
 }
@@ -5870,6 +5983,8 @@ void game::monmove()
             critter.move(); // Move one square, possibly hit u
             critter.process_triggers();
             m.creature_in_field( critter );
+        draw();
+        refresh_display();
         }
 
         if (!critter.is_dead() &&
